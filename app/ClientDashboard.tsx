@@ -103,8 +103,9 @@ export function ClientDashboard(props: { fromDefault: string; toDefault: string 
       const json = (await res.json()) as ApiResponse;
       setData(json);
       if (!json.ok) setError(json.error);
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
     } finally {
       setLoading(false);
     }
