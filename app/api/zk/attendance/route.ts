@@ -12,23 +12,14 @@ function parseDateOrUndefined(v: string | null) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
 
-  const ip = url.searchParams.get('ip') || process.env.ZK_IP || '192.168.1.8';
-  const port = Number(
-    url.searchParams.get('port') || process.env.ZK_PORT || '4370',
-  );
-  const timeoutMs = Number(
-    url.searchParams.get('timeoutMs') || process.env.ZK_TIMEOUT_MS || '10000',
-  );
-  const commKey = Number(
-    url.searchParams.get('commKey') || process.env.ZK_COMM_KEY || '0',
-  );
+  // Device connection settings are server-only (never provided by the browser).
+  const ip = process.env.ZK_IP || '192.168.1.8';
+  const port = Number(process.env.ZK_PORT || '4370');
+  const timeoutMs = Number(process.env.ZK_TIMEOUT_MS || '10000');
+  const commKey = Number(process.env.ZK_COMM_KEY || '0');
 
   const from = parseDateOrUndefined(url.searchParams.get('from'));
   const to = parseDateOrUndefined(url.searchParams.get('to'));
-  const limit = Math.max(
-    0,
-    Math.min(50000, Number(url.searchParams.get('limit') || '5000')),
-  );
 
   const client = new ZkTcpClient({ ip, port, timeoutMs, commKey });
 
@@ -43,7 +34,6 @@ export async function GET(req: Request) {
         if (to && t >= to.getTime()) return false;
         return true;
       })
-      .slice(0, limit)
       .map((r) => ({
         userSn: r.userSn ?? null,
         deviceUserId: r.deviceUserId ?? null,
@@ -52,7 +42,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      device: { ip, port },
       count: filtered.length,
       tookMs: Date.now() - startedAt,
       records: filtered,
@@ -60,7 +49,7 @@ export async function GET(req: Request) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json(
-      { ok: false, error: message, device: { ip, port } },
+      { ok: false, error: message },
       { status: 500 },
     );
   } finally {
