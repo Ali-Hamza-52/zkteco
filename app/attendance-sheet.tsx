@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { addDays, format, isAfter, isBefore, isSameDay, parseISO } from "date-fns";
+import { addDays, format, isBefore, isSameDay, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import type { DateRange } from "react-day-picker";
 
 type ApiRecord = {
   userSn: number | null;
@@ -37,11 +38,6 @@ function startOfMonth(d: Date) {
 
 function addMonths(d: Date, delta: number) {
   return new Date(d.getFullYear(), d.getMonth() + delta, 1);
-}
-
-function clampRange(from: Date, to: Date) {
-  if (isAfter(from, to)) return { from: to, to: from };
-  return { from, to };
 }
 
 function eachDayInclusive(from: Date, to: Date) {
@@ -101,7 +97,7 @@ export function AttendanceSheet() {
   const defaultFrom = startOfMonth(now);
   const defaultTo = addDays(addMonths(defaultFrom, 1), -1); // end of month
 
-  const [{ from, to }, setRange] = React.useState(() => ({
+  const [range, setRange] = React.useState<{ from: Date; to: Date }>(() => ({
     from: defaultFrom,
     to: defaultTo,
   }));
@@ -122,8 +118,11 @@ export function AttendanceSheet() {
     };
   }, []);
 
-  const isoFrom = React.useMemo(() => toIsoDateOnly(from), [from]);
-  const isoToExclusive = React.useMemo(() => toIsoDateOnly(addDays(to, 1)), [to]);
+  const isoFrom = React.useMemo(() => toIsoDateOnly(range.from), [range.from]);
+  const isoToExclusive = React.useMemo(
+    () => toIsoDateOnly(addDays(range.to, 1)),
+    [range.to]
+  );
 
   async function fetchData() {
     setLoading(true);
@@ -144,7 +143,10 @@ export function AttendanceSheet() {
     }
   }
 
-  const days = React.useMemo(() => eachDayInclusive(from, to), [from, to]);
+  const days = React.useMemo(
+    () => eachDayInclusive(range.from, range.to),
+    [range.from, range.to]
+  );
 
   const byUserDay = React.useMemo(() => {
     const map = new Map<string, Map<string, Date>>(); // userId -> dayKey -> firstPunch
@@ -195,18 +197,8 @@ export function AttendanceSheet() {
 
           <div className="flex flex-wrap items-end gap-2">
             <div className="grid gap-1">
-              <Label className="text-xs">From</Label>
-              <DatePick
-                value={from}
-                onChange={(d) => setRange((r) => clampRange(d, r.to))}
-              />
-            </div>
-            <div className="grid gap-1">
-              <Label className="text-xs">To</Label>
-              <DatePick
-                value={to}
-                onChange={(d) => setRange((r) => clampRange(r.from, d))}
-              />
+              <Label className="text-xs">Range</Label>
+              <RangePick value={range} onChange={setRange} />
             </div>
             <Button onClick={fetchData} disabled={loading}>
               {loading ? "Fetching…" : "Fetch"}
@@ -229,7 +221,7 @@ export function AttendanceSheet() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs text-muted-foreground">
               Range: <span className="font-mono">{isoFrom}</span> →{" "}
-              <span className="font-mono">{toIsoDateOnly(to)}</span>
+              <span className="font-mono">{toIsoDateOnly(range.to)}</span>
               {data && data.ok ? (
                 <>
                   {" "}
@@ -254,7 +246,7 @@ export function AttendanceSheet() {
               <div
                 className="grid border-b bg-muted/30 text-xs font-medium"
                 style={{
-                  gridTemplateColumns: `100px 220px repeat(${days.length}, 44px)`,
+                  gridTemplateColumns: `100px 180px repeat(${days.length}, 44px)`,
                 }}
               >
                 <div className="sticky left-0 z-20 border-r bg-muted/30 px-2 py-2">
@@ -263,8 +255,11 @@ export function AttendanceSheet() {
                 <div className="sticky left-[100px] z-20 border-r bg-muted/30 px-2 py-2">
                   Name
                 </div>
-                {days.map((d) => (
-                  <div key={`dow-${toIsoDateOnly(d)}`} className="border-r px-1 py-2 text-center">
+                {days.map((d, idx) => (
+                  <div
+                    key={`dow-${toIsoDateOnly(d)}`}
+                    className={cn("px-1 py-2 text-center", idx !== days.length - 1 ? "border-r" : "")}
+                  >
                     {weekdayShort(d)}
                   </div>
                 ))}
@@ -273,7 +268,7 @@ export function AttendanceSheet() {
               <div
                 className="grid border-b bg-background text-xs"
                 style={{
-                  gridTemplateColumns: `100px 220px repeat(${days.length}, 44px)`,
+                  gridTemplateColumns: `100px 180px repeat(${days.length}, 44px)`,
                 }}
               >
                 <div className="sticky left-0 z-20 border-r bg-background px-2 py-2 text-muted-foreground">
@@ -282,8 +277,11 @@ export function AttendanceSheet() {
                 <div className="sticky left-[100px] z-20 border-r bg-background px-2 py-2 text-muted-foreground">
                   &nbsp;
                 </div>
-                {days.map((d) => (
-                  <div key={`dom-${toIsoDateOnly(d)}`} className="border-r px-1 py-2 text-center">
+                {days.map((d, idx) => (
+                  <div
+                    key={`dom-${toIsoDateOnly(d)}`}
+                    className={cn("px-1 py-2 text-center", idx !== days.length - 1 ? "border-r" : "")}
+                  >
                     {d.getDate()}
                   </div>
                 ))}
@@ -301,7 +299,7 @@ export function AttendanceSheet() {
                       key={u.id}
                       className="grid border-b text-xs"
                       style={{
-                        gridTemplateColumns: `100px 220px repeat(${days.length}, 44px)`,
+                        gridTemplateColumns: `100px 180px repeat(${days.length}, 44px)`,
                       }}
                     >
                       <div className="sticky left-0 z-10 border-r bg-background px-2 py-2 font-mono font-semibold">
@@ -313,7 +311,7 @@ export function AttendanceSheet() {
                         </div>
                       </div>
 
-                      {days.map((d) => {
+                      {days.map((d, idx) => {
                         const key = toIsoDateOnly(d);
                         const holiday = isFridayHoliday(d);
                         const punch = row.get(key) ?? null;
@@ -343,7 +341,8 @@ export function AttendanceSheet() {
                           <div
                             key={`${u.id}-${key}`}
                             className={cn(
-                              "group relative border-r px-1 py-2 text-center tabular-nums",
+                              "group relative px-1 py-2 text-center tabular-nums",
+                              idx !== days.length - 1 ? "border-r" : "",
                               bg
                             )}
                           >
@@ -398,20 +397,65 @@ export function AttendanceSheet() {
   );
 }
 
-function DatePick(props: { value: Date; onChange: (d: Date) => void }) {
+function RangePick(props: {
+  value: { from: Date; to: Date };
+  onChange: (v: { from: Date; to: Date }) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [draft, setDraft] = React.useState<DateRange | undefined>({
+    from: props.value.from,
+    to: props.value.to,
+  });
+
+  React.useEffect(() => {
+    setDraft({ from: props.value.from, to: props.value.to });
+  }, [props.value.from, props.value.to]);
+
+  function apply() {
+    if (!draft?.from) return;
+    const from = draft.from;
+    const to = draft.to ?? draft.from;
+    const normalized =
+      from <= to ? { from, to } : { from: to, to: from };
+    props.onChange(normalized);
+    setOpen(false);
+  }
+
+  const label =
+    `${toIsoDateOnly(props.value.from)} → ${toIsoDateOnly(props.value.to)}`;
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-[160px] justify-start font-mono text-xs">
-          {toIsoDateOnly(props.value)}
+        <Button
+          variant="outline"
+          className="w-[240px] justify-start font-mono text-xs"
+        >
+          {label}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2" align="end">
         <Calendar
-          mode="single"
-          selected={props.value}
-          onSelect={(d) => d && props.onChange(d)}
+          mode="range"
+          numberOfMonths={2}
+          selected={draft}
+          onSelect={(next) => setDraft(next)}
         />
+        <div className="mt-2 flex items-center justify-between gap-2 px-1">
+          <div className="text-xs text-muted-foreground">
+            {draft?.from ? (
+              <span className="font-mono">
+                {toIsoDateOnly(draft.from)} →{" "}
+                {toIsoDateOnly(draft.to ?? draft.from)}
+              </span>
+            ) : (
+              "Pick start and end dates"
+            )}
+          </div>
+          <Button size="sm" onClick={apply} disabled={!draft?.from}>
+            Apply
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );
