@@ -1,5 +1,9 @@
 import { AttendanceSheet } from "./attendance-sheet";
 
 export default function Home() {
-  return <AttendanceSheet />;
+  return(
+    <div className="px-4">
+      <AttendanceSheet />
+    </div>
+  )
 }
