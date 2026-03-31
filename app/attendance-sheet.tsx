@@ -107,6 +107,15 @@ export function AttendanceSheet() {
   const [data, setData] = React.useState<ApiResponse | null>(null);
   const [userMap, setUserMap] = React.useState<Map<string, string>>(new Map());
   const [q, setQ] = React.useState("");
+  const [hover, setHover] = React.useState<null | {
+    x: number;
+    y: number;
+    userId: string;
+    userName: string;
+    dateKey: string;
+    status: "DO" | "X" | "A";
+    checkIn: string | null;
+  }>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -242,50 +251,35 @@ export function AttendanceSheet() {
           </div>
 
           <ScrollArea className="h-[70dvh] rounded-lg border bg-background">
-            <div className="min-w-max">
-              <div
-                className="grid border-b bg-muted/30 text-xs font-medium"
-                style={{
-                  gridTemplateColumns: `100px 180px repeat(${days.length}, 44px)`,
-                }}
-              >
-                <div className="sticky left-0 z-20 border-r bg-muted/30 px-2 py-2">
-                  ID
-                </div>
-                <div className="sticky left-[100px] z-20 border-r bg-muted/30 px-2 py-2">
-                  Name
-                </div>
-                {days.map((d, idx) => (
-                  <div
-                    key={`dow-${toIsoDateOnly(d)}`}
-                    className={cn("px-1 py-2 text-center", idx !== days.length - 1 ? "border-r" : "")}
-                  >
-                    {weekdayShort(d)}
+            <div className="overflow-x-auto">
+              <div className="min-w-full">
+                <div
+                  className="sticky top-0 z-30 grid border-b bg-muted/60 text-xs font-medium backdrop-blur"
+                  style={{
+                    gridTemplateColumns: `100px minmax(180px, 1fr) repeat(${days.length}, 44px)`,
+                  }}
+                >
+                  <div className="sticky left-0 z-40 border-r bg-muted/60 px-2 py-2">
+                    ID
                   </div>
-                ))}
-              </div>
-
-              <div
-                className="grid border-b bg-background text-xs"
-                style={{
-                  gridTemplateColumns: `100px 180px repeat(${days.length}, 44px)`,
-                }}
-              >
-                <div className="sticky left-0 z-20 border-r bg-background px-2 py-2 text-muted-foreground">
-                  &nbsp;
-                </div>
-                <div className="sticky left-[100px] z-20 border-r bg-background px-2 py-2 text-muted-foreground">
-                  &nbsp;
-                </div>
-                {days.map((d, idx) => (
-                  <div
-                    key={`dom-${toIsoDateOnly(d)}`}
-                    className={cn("px-1 py-2 text-center", idx !== days.length - 1 ? "border-r" : "")}
-                  >
-                    {d.getDate()}
+                  <div className="sticky left-[100px] z-40 border-r bg-muted/60 px-2 py-2">
+                    Name
                   </div>
-                ))}
-              </div>
+                  {days.map((d, idx) => (
+                    <div
+                      key={`hdr-${toIsoDateOnly(d)}`}
+                      className={cn(
+                        "px-1 py-1.5 text-center leading-tight",
+                        idx !== days.length - 1 ? "border-r" : ""
+                      )}
+                    >
+                      <div>{weekdayShort(d)}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {d.getDate()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
               {users.length === 0 ? (
                 <div className="p-6 text-sm text-muted-foreground">
@@ -299,7 +293,7 @@ export function AttendanceSheet() {
                       key={u.id}
                       className="grid border-b text-xs"
                       style={{
-                        gridTemplateColumns: `100px 180px repeat(${days.length}, 44px)`,
+                        gridTemplateColumns: `100px minmax(180px, 1fr) repeat(${days.length}, 44px)`,
                       }}
                     >
                       <div className="sticky left-0 z-10 border-r bg-background px-2 py-2 font-mono font-semibold">
@@ -345,39 +339,29 @@ export function AttendanceSheet() {
                               idx !== days.length - 1 ? "border-r" : "",
                               bg
                             )}
+                            onMouseEnter={(e) => {
+                              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                              setHover({
+                                x: rect.left + rect.width / 2,
+                                y: rect.top,
+                                userId: u.id,
+                                userName,
+                                dateKey: key,
+                                status: text,
+                                checkIn,
+                              });
+                            }}
+                            onMouseMove={(e) => {
+                              setHover((prev) =>
+                                prev ? { ...prev, x: e.clientX, y: e.clientY } : prev
+                              );
+                            }}
+                            onMouseLeave={() => setHover(null)}
                           >
                             <span className={cn(text === "DO" ? "text-[10px] font-semibold" : "")}>
                               {text}
                             </span>
 
-                            <div className="pointer-events-none absolute left-1/2 top-0 z-50 hidden w-[220px] -translate-x-1/2 -translate-y-[calc(100%+8px)] rounded-md border bg-popover px-3 py-2 text-left text-xs text-popover-foreground shadow-md group-hover:block">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <div className="truncate font-medium">{userName}</div>
-                                  <div className="font-mono text-[11px] text-muted-foreground">
-                                    {u.id}
-                                  </div>
-                                </div>
-                                <div className="font-mono text-[11px] text-muted-foreground">
-                                  {key}
-                                </div>
-                              </div>
-                              <div className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
-                                <div>
-                                  Status:{" "}
-                                  <span className="font-medium text-foreground">
-                                    {holiday ? "Day off (Friday)" : present ? "Present" : "Absent"}
-                                  </span>
-                                </div>
-                                <div>
-                                  Check-in:{" "}
-                                  <span className="font-medium text-foreground">
-                                    {checkIn ?? "—"}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="absolute left-1/2 top-full size-2 -translate-x-1/2 -translate-y-1 rotate-45 border-b border-r bg-popover" />
-                            </div>
                           </div>
                         );
                       })}
@@ -385,6 +369,7 @@ export function AttendanceSheet() {
                   );
                 })
               )}
+              </div>
             </div>
           </ScrollArea>
 
@@ -393,6 +378,44 @@ export function AttendanceSheet() {
           </div>
         </CardContent>
       </Card>
+
+      {hover ? (
+        <div
+          className="pointer-events-none fixed z-9999 w-[240px] -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-md border bg-popover px-3 py-2 text-left text-xs text-popover-foreground shadow-md"
+          style={{ left: hover.x, top: hover.y }}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="truncate font-medium">{hover.userName}</div>
+              <div className="font-mono text-[11px] text-muted-foreground">
+                {hover.userId}
+              </div>
+            </div>
+            <div className="font-mono text-[11px] text-muted-foreground">
+              {hover.dateKey}
+            </div>
+          </div>
+          <div className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
+            <div>
+              Status:{" "}
+              <span className="font-medium text-foreground">
+                {hover.status === "DO"
+                  ? "Day off (Friday)"
+                  : hover.status === "X"
+                  ? "Present"
+                  : "Absent"}
+              </span>
+            </div>
+            <div>
+              Check-in:{" "}
+              <span className="font-medium text-foreground">
+                {hover.checkIn ?? "—"}
+              </span>
+            </div>
+          </div>
+          <div className="absolute left-1/2 top-full size-2 -translate-x-1/2 -translate-y-1 rotate-45 border-b border-r bg-popover" />
+        </div>
+      ) : null}
     </div>
   );
 }
