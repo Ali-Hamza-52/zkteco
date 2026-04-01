@@ -79,7 +79,7 @@ function cellColorForCheckIn(day: Date, firstPunch: Date) {
   const late = Math.max(0, punchMin - startMin);
 
   // White if first 15 minutes of the day
-  if (late <= 15) return "white";
+  if (late <= 20) return "white";
   if (late <= 30) return "yellow";
   return "red";
 }
@@ -115,6 +115,7 @@ export function AttendanceSheet() {
     dateKey: string;
     status: "DO" | "X" | "A";
     checkIn: string | null;
+    checkOut: string | null;
   }>(null);
 
   React.useEffect(() => {
@@ -158,7 +159,7 @@ export function AttendanceSheet() {
   );
 
   const byUserDay = React.useMemo(() => {
-    const map = new Map<string, Map<string, Date>>(); // userId -> dayKey -> firstPunch
+    const map = new Map<string, Map<string, { first: Date; last: Date }>>();
     if (!data || !data.ok) return map;
 
     for (const r of data.records) {
@@ -167,9 +168,16 @@ export function AttendanceSheet() {
       const dt = parseISO(r.recordTime);
       if (!Number.isFinite(dt.getTime())) continue;
       const dayKey = toIsoDateOnly(dt);
-      const userRow = map.get(userId) ?? new Map<string, Date>();
+      const userRow = map.get(userId) ?? new Map<string, { first: Date; last: Date }>();
       const prev = userRow.get(dayKey);
-      if (!prev || dt < prev) userRow.set(dayKey, dt);
+      if (!prev) {
+        userRow.set(dayKey, { first: dt, last: dt });
+      } else {
+        userRow.set(dayKey, {
+          first: dt < prev.first ? dt : prev.first,
+          last: dt > prev.last ? dt : prev.last,
+        });
+      }
       map.set(userId, userRow);
     }
     return map;
@@ -287,7 +295,9 @@ export function AttendanceSheet() {
                 </div>
               ) : (
                 users.map((u) => {
-                  const row = byUserDay.get(u.id) ?? new Map<string, Date>();
+                  const row =
+                    byUserDay.get(u.id) ??
+                    new Map<string, { first: Date; last: Date }>();
                   return (
                     <div
                       key={u.id}
@@ -308,14 +318,14 @@ export function AttendanceSheet() {
                       {days.map((d, idx) => {
                         const key = toIsoDateOnly(d);
                         const holiday = isFridayHoliday(d);
-                        const punch = row.get(key) ?? null;
-                        const present = !!punch;
+                        const punches = row.get(key) ?? null;
+                        const present = !!punches;
 
                         let bg =
                           "bg-background";
                         if (holiday) bg = "bg-muted/40";
                         else if (present) {
-                          const c = cellColorForCheckIn(d, punch!);
+                          const c = cellColorForCheckIn(d, punches!.first);
                           bg =
                             c === "white"
                               ? "bg-background"
@@ -327,9 +337,14 @@ export function AttendanceSheet() {
                         }
 
                         const text = holiday ? "DO" : present ? "X" : "A";
-                        const showTime = !holiday && present && punch;
+                        const showTime = !holiday && present && punches;
                         const userName = u.name ?? u.id;
-                        const checkIn = showTime ? punch.toLocaleTimeString() : null;
+                        const checkIn = showTime
+                          ? punches!.first.toLocaleTimeString()
+                          : null;
+                        const checkOut = showTime
+                          ? punches!.last.toLocaleTimeString()
+                          : null;
 
                         return (
                           <div
@@ -349,6 +364,7 @@ export function AttendanceSheet() {
                                 dateKey: key,
                                 status: text,
                                 checkIn,
+                                checkOut,
                               });
                             }}
                             onMouseMove={(e) => {
@@ -372,10 +388,6 @@ export function AttendanceSheet() {
               </div>
             </div>
           </ScrollArea>
-
-          <div className="text-xs text-muted-foreground">
-            Colors: white ≤ 15 min • yellow 16–30 • red &gt; 30. (Based on first punch of day.)
-          </div>
         </CardContent>
       </Card>
 
@@ -410,6 +422,12 @@ export function AttendanceSheet() {
               Check-in:{" "}
               <span className="font-medium text-foreground">
                 {hover.checkIn ?? "—"}
+              </span>
+            </div>
+            <div>
+              Check-out:{" "}
+              <span className="font-medium text-foreground">
+                {hover.checkOut ?? "—"}
               </span>
             </div>
           </div>
