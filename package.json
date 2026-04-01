@@ -1,5 +1,5 @@
 {
-  "name": "zkteco",
+  "name": "Glorek Attendance",
   "version": "0.1.0",
   "private": true,
   "description": "ZKTeco Attendance Sheet",
@@ -19,7 +19,8 @@
     "Sheet",
     "Next.js",
     "React",
-    "Tailwind CSS"
+    "Tailwind CSS",
+    "Electron"
   ],
   "author": {
     "name": "Ali Hamza",
