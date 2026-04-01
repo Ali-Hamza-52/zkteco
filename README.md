@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## ZKTeco Attendance Spreadsheet (Next.js)
 
-## Getting Started
+Single-page attendance viewer that fetches ZKTeco device logs and renders a **spreadsheet-style** grid for a selected date range.
 
-First, run the development server:
+### What it shows
+- **Rows**: employees **only if they appear in fetched logs**
+  - ID from device logs (`deviceUserId` / fallback `userSn`)
+  - Name mapped from `public/user-info.json`
+- **Columns**: each day in the selected range
+- **Cell values**:
+  - **X** = present (at least one punch that day)
+  - **A** = absent
+  - **DO** = Friday day-off (holiday)
+- **Cell color meaning (based on first punch / check-in):**
+  - **On Time (White)**: 0–20 minutes late (Grace Period)
+  - **Slightly Late (Yellow)**: 21–30 minutes late (Tolerance)
+  - **Late (Red)**: More than 30 minutes late
+- **Hover tooltip displays:** Name, ID, date, status, **check-in** (first punch), **check-out** (last punch)
+
+### Rules
+- **Holiday**: Friday
+- **Shift start**:
+  - Regular days: **08:00**
+  - Saturday: **10:00**
+- **Color thresholds** are calculated from the shift start time for that day.
+
+### Running locally
+Install deps and start dev server:
 
 ```bash
-npm run dev
-# or
+yarn
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment (.env)
+The API route `app/api/zk/attendance/route.ts` connects to the device using:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `ZK_IP` (default `192.168.1.8`)
+- `ZK_PORT` (default `4370`)
+- `ZK_TIMEOUT_MS` (default `10000`)
+- `ZK_COMM_KEY` (default `0`)
 
-## Learn More
+Copy and edit:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+copy .env.example .env
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Data files
+- `public/user-info.json`: maps `{ userId, name }` so IDs in logs can show friendly names.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Main UI file
+- `app/attendance-sheet.tsx`: range picker + spreadsheet grid + hover tooltip
