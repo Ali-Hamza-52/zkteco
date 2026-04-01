@@ -2,10 +2,43 @@
   "name": "zkteco",
   "version": "0.1.0",
   "private": true,
+  "description": "ZKTeco Attendance Sheet",
+  "license": "MIT",
+  "packageManager": "yarn@1.22.22",
+  "homepage": "https://github.com/Ali-Hamza-52/zkteco",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ali-Hamza-52/zkteco.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Ali-Hamza-52/zkteco/issues"
+  },
+  "keywords": [
+    "ZKTeco",
+    "Attendance",
+    "Sheet",
+    "Next.js",
+    "React",
+    "Tailwind CSS"
+  ],
+  "author": {
+    "name": "Ali Hamza",
+    "email": "alihamza52@gmail.com",
+    "url": "https://github.com/Ali-Hamza-52"
+  },
+  "contributors": [
+    {
+      "name": "Ali Hamza",
+      "email": "alihamza52@gmail.com",
+      "url": "https://github.com/Ali-Hamza-52"
+    }
+  ],
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
+    "dev:desktop": "concurrently -k -n NEXT,ELECTRON -c blue,magenta \"yarn dev\" \"wait-on http://127.0.0.1:3000 && cross-env PORT=3000 electron .\"",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3000",
+    "dist": "rimraf dist && yarn build && electron-builder",
     "lint": "eslint"
   },
   "dependencies": {
@@ -28,9 +61,53 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.1.0",
+    "electron-builder": "^26.8.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "rimraf": "^6.1.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9.0.4"
+  },
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.glorek.attendance",
+    "productName": "Glorek Attendance",
+    "copyright": "Copyright © Glorek",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "standalone"
+      },
+      {
+        "from": ".next/static",
+        "to": "standalone/.next/static"
+      },
+      {
+        "from": "public",
+        "to": "standalone/public"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }
